@@ -34,7 +34,7 @@ In CasaOS, choose **App Store → Custom Install** and configure:
 
 Optional environment variables:
 
-- `APP_URL=http://<server-ip>:<host-port>`
+- `APP_URL=http://<server-ip>:<host-port>` (use the public `https://` URL when behind HTTPS)
 - `AUTH_SECRET=<explicit secret of at least 32 characters>`
 - `REGISTRATION_ENABLED=true`
 - `MAX_UPLOAD_SIZE_MB=10`

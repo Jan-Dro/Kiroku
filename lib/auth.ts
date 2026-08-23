@@ -5,9 +5,11 @@ import argon2 from "argon2";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { shouldUseSecureSessionCookie } from "@/lib/session-cookie";
 
 const SESSION_COOKIE = "vm_session";
 const SESSION_AGE_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 const secret = new TextEncoder().encode(env.SESSION_SECRET);
 
 function sha256(input: string) {
@@ -58,7 +60,7 @@ export async function createSession(userId: string) {
   cookieStore.set(SESSION_COOKIE, signed, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureSessionCookie(env.APP_URL),
     path: "/",
     maxAge: SESSION_AGE_SECONDS,
   });
@@ -89,37 +91,47 @@ export async function getSessionUser() {
     return null;
   }
 
+  let value: string;
+
   try {
-    const value = await verifySessionToken(token);
-    const [sessionId, rawToken] = value.split(".");
-    const session = await db.session.findUnique({
-      where: { id: sessionId },
-      include: {
-        user: {
-          include: {
-            preferences: true,
-          },
+    value = await verifySessionToken(token);
+  } catch {
+    return null;
+  }
+
+  const [sessionId, rawToken] = value.split(".");
+
+  if (!sessionId || !rawToken) {
+    return null;
+  }
+
+  const session = await db.session.findUnique({
+    where: { id: sessionId },
+    include: {
+      user: {
+        include: {
+          preferences: true,
         },
       },
-    });
+    },
+  });
 
-    if (!session || session.expiresAt < new Date() || session.tokenHash !== sha256(rawToken)) {
-      cookieStore.delete(SESSION_COOKIE);
-      return null;
-    }
+  if (!session || session.expiresAt < new Date() || session.tokenHash !== sha256(rawToken)) {
+    return null;
+  }
 
+  if (Date.now() - session.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
     await db.session.update({
       where: { id: session.id },
       data: {
         lastSeenAt: new Date(),
       },
+    }).catch((error) => {
+      console.error("Unable to update session activity.", error);
     });
-
-    return session.user;
-  } catch {
-    cookieStore.delete(SESSION_COOKIE);
-    return null;
   }
+
+  return session.user;
 }
 
 export async function requireUser() {

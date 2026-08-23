@@ -1,0 +1,13 @@
+services:
+  kiroku:
+    image: ${KIROKU_IMAGE:-ghcr.io/<github-username>/kiroku:latest}
+    ports:
+      - "${KIROKU_PORT:-3000}:3000"
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+    volumes:
+      - ${KIROKU_DATA_DIR:-./data}:/app/data
+    restart: unless-stopped

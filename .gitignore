@@ -5,6 +5,6 @@ node_modules/
 coverage/
 dist/
 uploads/
-data/
+/data/
 *.log
 .env

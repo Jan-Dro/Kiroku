@@ -1,9 +1,8 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Camera, ImageUp, X } from "lucide-react";
-import { updateVehicleImageAction } from "@/app/actions/vehicles";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
@@ -21,7 +20,8 @@ export function VehicleImageDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [filename, setFilename] = useState("");
-  const [state, action, pending] = useActionState(updateVehicleImageAction, initialState);
+  const [pending, setPending] = useState(false);
+  const [state, setState] = useState(initialState);
 
   useEffect(() => {
     if (state.ok) {
@@ -59,7 +59,47 @@ export function VehicleImageDialog({
             </Dialog.Close>
           </div>
 
-          <form action={action} className="mt-6 grid gap-4">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setPending(true);
+              setState(initialState);
+
+              const form = e.currentTarget as HTMLFormElement;
+              const input = form.elements.namedItem("image") as HTMLInputElement | null;
+              const file = input?.files?.[0];
+
+              if (!file) {
+                setState({ ok: false, error: "Choose an image to upload." });
+                setPending(false);
+                return;
+              }
+
+              const fd = new FormData();
+              fd.append("vehicleId", vehicleId);
+              fd.append("image", file);
+
+              try {
+                const res = await fetch(`/api/vehicles/${vehicleId}/image`, {
+                  method: "POST",
+                  body: fd,
+                });
+
+                if (!res.ok) {
+                  const body = await res.json().catch(() => ({}));
+                  setState({ ok: false, error: body?.error?.message ?? `Upload failed (${res.status})` });
+                  setPending(false);
+                  return;
+                }
+
+                setState({ ok: true, error: "" });
+                setPending(false);
+              } catch (err) {
+                setState({ ok: false, error: err instanceof Error ? err.message : String(err) });
+                setPending(false);
+              }
+            }}
+            className="mt-6 grid gap-4">
             <input name="vehicleId" type="hidden" value={vehicleId} />
             <div className="space-y-2">
               <Label htmlFor="vehicle-image-upload">Photo</Label>
@@ -80,7 +120,7 @@ export function VehicleImageDialog({
             </div>
             {state.error ? <p className="text-sm text-amber-300">{state.error}</p> : null}
             <div>
-              <Button disabled={pending}>{hasImage ? "Save new photo" : "Save photo"}</Button>
+              <Button disabled={pending}>{pending ? "Uploading..." : hasImage ? "Save new photo" : "Save photo"}</Button>
             </div>
           </form>
         </Dialog.Content>

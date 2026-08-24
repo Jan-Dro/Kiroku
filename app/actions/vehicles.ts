@@ -126,15 +126,10 @@ export async function createVehicleAction(
   }
 
   if (image instanceof File && image.size > 0) {
-    try {
-      ensureAllowedVehicleImage(image);
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : "Invalid vehicle image.",
-        vehicleId: "",
-      };
-    }
+    // Note: image validation is intentionally not performed here for createVehicleAction
+    // because the binary must not be submitted via Server Actions (it hits Next's body limit).
+    // The client will upload the image separately to the dedicated API route after the
+    // vehicle is created.
   }
 
   const purchasePriceCents =
@@ -176,24 +171,8 @@ export async function createVehicleAction(
     });
   }
 
-  if (image instanceof File && image.size > 0) {
-    try {
-      const storedImage = await persistVehicleImage(vehicle.id, image);
-
-      await db.vehicle.update({
-        where: { id: vehicle.id },
-        data: {
-          imagePath: storedImage.diskPath,
-        },
-      });
-    } catch (error) {
-      return {
-        ok: false,
-        error: error instanceof Error ? error.message : "Unable to save vehicle image.",
-        vehicleId: "",
-      };
-    }
-  }
+  // Image persistence is performed by the client via the /api/vehicles/{vehicleId}/image
+  // endpoint using fetch + FormData, to avoid sending binary data through Server Actions.
 
   revalidatePath("/dashboard");
   revalidatePath("/vehicles");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { createVehicleAction } from "@/app/actions/vehicles";
@@ -29,12 +29,52 @@ const fuelTypes = [
 export function VehicleForm() {
   const router = useRouter();
   const [state, action, pending] = useActionState(createVehicleAction, initialState);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (state.ok && state.vehicleId) {
-      router.push(`/vehicles/${state.vehicleId}`);
+      // If no image selected, navigate immediately.
+      if (!selectedFile) {
+        router.push(`/vehicles/${state.vehicleId}`);
+        return;
+      }
+
+      // Otherwise upload the image via fetch to the dedicated API route.
+      async function upload() {
+        setUploadingImage(true);
+        setUploadError(null);
+
+        try {
+          const fd = new FormData();
+          fd.append("vehicleId", state.vehicleId);
+          fd.append("image", selectedFile as Blob);
+
+          const res = await fetch(`/api/vehicles/${state.vehicleId}/image`, {
+            method: "POST",
+            body: fd,
+          });
+
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            const msg = body?.error?.message ?? `Image upload failed (${res.status})`;
+            setUploadError(msg);
+            setUploadingImage(false);
+            return;
+          }
+
+          // Success — navigate to the vehicle page
+          router.push(`/vehicles/${state.vehicleId}`);
+        } catch (err) {
+          setUploadError(err instanceof Error ? err.message : String(err));
+          setUploadingImage(false);
+        }
+      }
+
+      upload();
     }
-  }, [router, state]);
+  }, [router, state, selectedFile]);
 
   return (
     <Card>
@@ -97,7 +137,12 @@ export function VehicleForm() {
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="image">Vehicle photo</Label>
-            <Input accept="image/jpeg,image/png,image/webp" id="image" name="image" type="file" />
+            <Input
+              accept="image/jpeg,image/png,image/webp"
+              id="image"
+              type="file"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+            />
             <p className="text-sm text-[var(--muted-foreground)]">
               Optional. JPEG, PNG, or WebP up to your configured upload size.
             </p>
@@ -112,10 +157,15 @@ export function VehicleForm() {
             </p>
           ) : null}
           <div className="md:col-span-2">
-            <Button disabled={pending} size="lg">
-              {pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-              Save vehicle
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button disabled={pending || uploadingImage} size="lg">
+                {pending || uploadingImage ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                Save vehicle
+              </Button>
+              {uploadError ? (
+                <div className="text-sm text-amber-300">Image upload failed: {uploadError}</div>
+              ) : null}
+            </div>
           </div>
         </form>
       </CardContent>

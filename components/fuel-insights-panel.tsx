@@ -91,7 +91,7 @@ export function FuelInsightsPanel({ entries }: { entries: FuelEntryChartInput[] 
       </div>
 
       <div className="h-72">
-        {chartData.length > 1 ? (
+        {chartData.length > 0 ? (
           <ResponsiveContainer height="100%" width="100%">
             <AreaChart data={chartData}>
               <defs>

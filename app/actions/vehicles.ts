@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { DocumentCategory, ExpenseCategory, FuelType } from "@prisma/client";
+import { DocumentCategory, ExpenseCategory, FuelType, Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { calculateFuelEconomy } from "@/lib/domain/fuel";
@@ -93,28 +93,27 @@ export async function createVehicleAction(
   formData: FormData,
 ): Promise<VehicleActionState> {
   const user = await requireUser();
-  const image = formData.get("image");
   const parsed = vehicleSchema.safeParse({
     nickname: formData.get("nickname"),
     year: formData.get("year"),
     make: formData.get("make"),
     model: formData.get("model"),
-    trim: formData.get("trim"),
-    vin: formData.get("vin"),
-    licensePlate: formData.get("licensePlate"),
-    purchaseDate: formData.get("purchaseDate"),
+    trim: formData.get("trim")?.toString() ?? "",
+    vin: formData.get("vin")?.toString() ?? "",
+    licensePlate: formData.get("licensePlate")?.toString() ?? "",
+    purchaseDate: formData.get("purchaseDate")?.toString() ?? "",
     purchaseMileage: optionalNumber(formData.get("purchaseMileage")),
     currentMileage: optionalNumber(formData.get("currentMileage")),
-    purchasePrice: formData.get("purchasePrice"),
-    engine: formData.get("engine"),
-    drivetrain: formData.get("drivetrain"),
-    transmission: formData.get("transmission"),
+    purchasePrice: formData.get("purchasePrice")?.toString() ?? "",
+    engine: formData.get("engine")?.toString() ?? "",
+    drivetrain: formData.get("drivetrain")?.toString() ?? "",
+    transmission: formData.get("transmission")?.toString() ?? "",
     fuelType:
       formData.get("fuelType") && formData.get("fuelType") !== ""
         ? (formData.get("fuelType") as FuelType)
         : null,
-    exteriorColor: formData.get("exteriorColor"),
-    notes: formData.get("notes"),
+    exteriorColor: formData.get("exteriorColor")?.toString() ?? "",
+    notes: formData.get("notes")?.toString() ?? "",
   });
 
   if (!parsed.success) {
@@ -125,40 +124,47 @@ export async function createVehicleAction(
     };
   }
 
-  if (image instanceof File && image.size > 0) {
-    // Note: image validation is intentionally not performed here for createVehicleAction
-    // because the binary must not be submitted via Server Actions (it hits Next's body limit).
-    // The client will upload the image separately to the dedicated API route after the
-    // vehicle is created.
-  }
-
   const purchasePriceCents =
     parsed.data.purchasePrice && parsed.data.purchasePrice.length > 0
       ? parseCurrencyToCents(parsed.data.purchasePrice)
       : null;
 
-  const vehicle = await db.vehicle.create({
-    data: {
-      userId: user.id,
-      nickname: parsed.data.nickname,
-      year: parsed.data.year,
-      make: parsed.data.make,
-      model: parsed.data.model,
-      trim: parsed.data.trim || null,
-      vin: parsed.data.vin || null,
-      licensePlate: parsed.data.licensePlate || null,
-      purchaseDate: parsed.data.purchaseDate ? new Date(parsed.data.purchaseDate) : null,
-      purchaseMileage: parsed.data.purchaseMileage ?? null,
-      currentMileage: parsed.data.currentMileage ?? parsed.data.purchaseMileage ?? null,
-      purchasePriceCents,
-      engine: parsed.data.engine || null,
-      drivetrain: parsed.data.drivetrain || null,
-      transmission: parsed.data.transmission || null,
-      fuelType: parsed.data.fuelType || null,
-      exteriorColor: parsed.data.exteriorColor || null,
-      notes: parsed.data.notes || null,
-    },
-  });
+  let vehicle;
+
+  try {
+    vehicle = await db.vehicle.create({
+      data: {
+        userId: user.id,
+        nickname: parsed.data.nickname,
+        year: parsed.data.year,
+        make: parsed.data.make,
+        model: parsed.data.model,
+        trim: parsed.data.trim || null,
+        vin: parsed.data.vin || null,
+        licensePlate: parsed.data.licensePlate || null,
+        purchaseDate: parsed.data.purchaseDate ? new Date(parsed.data.purchaseDate) : null,
+        purchaseMileage: parsed.data.purchaseMileage ?? null,
+        currentMileage: parsed.data.currentMileage ?? parsed.data.purchaseMileage ?? null,
+        purchasePriceCents,
+        engine: parsed.data.engine || null,
+        drivetrain: parsed.data.drivetrain || null,
+        transmission: parsed.data.transmission || null,
+        fuelType: parsed.data.fuelType || null,
+        exteriorColor: parsed.data.exteriorColor || null,
+        notes: parsed.data.notes || null,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return {
+        ok: false,
+        error: "A vehicle with that VIN already exists in your garage.",
+        vehicleId: "",
+      };
+    }
+
+    throw error;
+  }
 
   if (vehicle.currentMileage !== null) {
     await db.odometerReading.create({

@@ -73,6 +73,12 @@ export default async function VehicleServicePage({
                   </div>
                   <p className="font-medium">{formatCurrencyFromCents(record.totalCostCents)}</p>
                 </div>
+                {record.notes ? (
+                  <details className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)]/35 p-3">
+                    <summary className="cursor-pointer text-sm font-medium text-[var(--foreground)]">View notes</summary>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--muted-foreground)]">{record.notes}</p>
+                  </details>
+                ) : null}
                 {record.measurements.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {record.measurements.map((measurement) => (

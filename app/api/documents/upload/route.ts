@@ -5,7 +5,6 @@ import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
   DocumentUploadValidationError,
-  getUploadConfig,
   persistVehicleDocument,
   removeStoredDocument,
 } from "@/lib/documents";
@@ -191,9 +190,6 @@ export async function POST(request: Request) {
           occurredAt: document.occurredAt?.toISOString() ?? null,
           odometer: document.odometer,
           notes: document.notes,
-        },
-        upload: {
-          maxUploadSizeMb: getUploadConfig().MAX_UPLOAD_SIZE_MB,
         },
       },
       { status: 201 },

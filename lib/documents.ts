@@ -57,11 +57,12 @@ export function ensureAllowedDocument(file: File) {
     );
   }
 
-  const maxBytes = getUploadConfig().MAX_UPLOAD_SIZE_MB * 1024 * 1024;
+  const { MAX_UPLOAD_SIZE_MB } = getUploadConfig();
+  const maxBytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024;
 
   if (file.size > maxBytes) {
     throw new DocumentUploadValidationError(
-      `Files must be ${getUploadConfig().MAX_UPLOAD_SIZE_MB} MB or smaller.`,
+      `Files must be ${MAX_UPLOAD_SIZE_MB} MB or smaller.`,
       "FILE_TOO_LARGE",
     );
   }

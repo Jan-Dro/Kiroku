@@ -1,10 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "50mb",
-    },
+  // Server Actions config moved to top-level in newer Next.js versions so
+  // the bodySizeLimit is honored for large multipart/form-data uploads.
+  serverActions: {
+    bodySizeLimit: "50mb",
   },
   images: {
     remotePatterns: [],

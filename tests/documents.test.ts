@@ -22,10 +22,19 @@ function createTestDirectory() {
   return directory;
 }
 
+function restoreEnv(name: "UPLOAD_DIR" | "MAX_UPLOAD_SIZE_MB" | "APP_DATA_DIR", value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
+}
+
 afterEach(() => {
-  process.env.UPLOAD_DIR = originalUploadDir;
-  process.env.MAX_UPLOAD_SIZE_MB = originalMaxUploadSizeMb;
-  process.env.APP_DATA_DIR = originalAppDataDir;
+  restoreEnv("UPLOAD_DIR", originalUploadDir);
+  restoreEnv("MAX_UPLOAD_SIZE_MB", originalMaxUploadSizeMb);
+  restoreEnv("APP_DATA_DIR", originalAppDataDir);
 
   for (const directory of testDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });

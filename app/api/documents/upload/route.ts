@@ -121,6 +121,7 @@ export async function POST(request: Request) {
 
   try {
     storedDocument = await persistVehicleDocument(vehicle.id, file);
+    const storedPath = storedDocument.diskPath;
 
     const document = await db.$transaction(async (tx) => {
       const createdDocument = await tx.document.create({
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
           vehicleId: vehicle.id,
           title,
           category,
-          filePath: storedDocument.diskPath,
+          filePath: storedPath,
           contentType: file.type,
           fileSizeBytes: file.size,
           occurredAt,

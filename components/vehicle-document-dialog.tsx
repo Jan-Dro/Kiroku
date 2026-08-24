@@ -1,12 +1,10 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { FileUp, Pencil, Upload, X } from "lucide-react";
-import {
-  createVehicleDocumentAction,
-  updateVehicleDocumentMetadataAction,
-} from "@/app/actions/vehicles";
+import { useRouter } from "next/navigation";
+import { updateVehicleDocumentMetadataAction } from "@/app/actions/vehicles";
 import { getLocalDateInputValue } from "@/lib/client-date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,11 +58,14 @@ export function VehicleDocumentDialog({
   triggerVariant?: "default" | "secondary" | "outline" | "ghost";
   triggerClassName?: string;
 }) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
   const [localDate, setLocalDate] = useState(getLocalDateInputValue());
   const [selectedFilename, setSelectedFilename] = useState("");
   const [title, setTitle] = useState(document?.title ?? "");
-  const [createState, createAction, createPending] = useActionState(createVehicleDocumentAction, initialState);
+  const [createState, setCreateState] = useState(initialState);
+  const [createPending, setCreatePending] = useState(false);
   const [updateState, updateAction, updatePending] = useActionState(updateVehicleDocumentMetadataAction, initialState);
 
   useEffect(() => {
@@ -75,14 +76,15 @@ export function VehicleDocumentDialog({
     if (open) {
       setTitle(document?.title ?? "");
       setSelectedFilename("");
+      setCreateState(initialState);
     }
   }, [document?.title, open]);
 
   useEffect(() => {
-    if (createState.ok || updateState.ok) {
+    if (updateState.ok) {
       setOpen(false);
     }
-  }, [createState.ok, updateState.ok]);
+  }, [updateState.ok]);
 
   const pending = mode === "create" ? createPending : updatePending;
   const error = mode === "create" ? createState.error : updateState.error;
@@ -90,6 +92,49 @@ export function VehicleDocumentDialog({
     () => document?.occurredAt?.slice(0, 10) ?? localDate,
     [document?.occurredAt, localDate],
   );
+
+  async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (createPending) {
+      return;
+    }
+
+    const form = event.currentTarget;
+    setCreatePending(true);
+    setCreateState(initialState);
+
+    try {
+      const response = await fetch("/api/documents/upload", {
+        method: "POST",
+        body: new FormData(form),
+      });
+      const result = (await response.json().catch(() => null)) as
+        | { ok?: boolean; error?: { message?: string } }
+        | null;
+
+      if (!response.ok || !result?.ok) {
+        setCreateState({
+          ok: false,
+          error: result?.error?.message ?? "Unable to upload document.",
+        });
+        return;
+      }
+
+      formRef.current?.reset();
+      setSelectedFilename("");
+      setTitle("");
+      setOpen(false);
+      router.refresh();
+    } catch {
+      setCreateState({
+        ok: false,
+        error: "Unable to upload document.",
+      });
+    } finally {
+      setCreatePending(false);
+    }
+  }
 
   return (
     <Dialog.Root onOpenChange={setOpen} open={open}>
@@ -126,7 +171,12 @@ export function VehicleDocumentDialog({
             </Dialog.Close>
           </div>
 
-          <form action={mode === "create" ? createAction : updateAction} className="mt-6 grid gap-4 sm:grid-cols-2">
+          <form
+            action={mode === "edit" ? updateAction : undefined}
+            className="mt-6 grid gap-4 sm:grid-cols-2"
+            onSubmit={mode === "create" ? handleCreateSubmit : undefined}
+            ref={formRef}
+          >
             <input name="vehicleId" type="hidden" value={vehicleId} />
             {document ? <input name="documentId" type="hidden" value={document.id} /> : null}
             {mode === "create" ? (
@@ -138,7 +188,7 @@ export function VehicleDocumentDialog({
                   </span>
                   <FileUp className="h-4 w-4 text-[var(--muted-foreground)]" />
                   <input
-                    accept="application/pdf,image/jpeg,image/png,image/webp,image/*"
+                    accept="application/pdf,image/jpeg,image/png,image/webp"
                     className="hidden"
                     id={`document-file-${mode}`}
                     name="file"

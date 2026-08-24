@@ -12,6 +12,8 @@
   --border: oklch(0.89 0.01 95);
   --input: oklch(0.985 0.004 95);
   --ring: oklch(0.65 0.13 220);
+  --font-geist-sans:
+    Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
 }
 
 .dark {

@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const vehicleId = formData.get("vehicleId")?.toString().trim() ?? "";
   const title = formData.get("title")?.toString().trim() ?? "";
-  const categoryValue = formData.get("category")?.toString().trim() ?? "OTHER";
+  const categoryValue = formData.get("category")?.toString().trim() ?? "";
   const notes = optionalString(formData.get("notes"));
   const odometer = parseOptionalOdometer(formData.get("odometer"));
   const occurredAt = parseOccurredAt(formData.get("occurredAt"));
@@ -96,7 +96,9 @@ export async function POST(request: Request) {
     return jsonError(400, "INVALID_REQUEST", "Choose a file to upload.");
   }
 
-  const category = DocumentCategory[categoryValue as keyof typeof DocumentCategory];
+  const category = categoryValue
+    ? DocumentCategory[categoryValue as keyof typeof DocumentCategory]
+    : undefined;
 
   if (!category) {
     return jsonError(400, "INVALID_REQUEST", "Choose a valid document category.");
@@ -155,9 +157,9 @@ export async function POST(request: Request) {
         await tx.odometerReading.create({
           data: {
             vehicleId: vehicle.id,
-            occurredAt: new Date(),
             reading: odometer,
             source: "manual-entry",
+            occurredAt: createdDocument.occurredAt ?? new Date(),
           },
         });
 

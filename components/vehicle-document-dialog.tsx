@@ -100,13 +100,14 @@ export function VehicleDocumentDialog({
       return;
     }
 
+    const form = event.currentTarget;
     setCreatePending(true);
     setCreateState(initialState);
 
     try {
       const response = await fetch("/api/documents/upload", {
         method: "POST",
-        body: new FormData(event.currentTarget),
+        body: new FormData(form),
       });
       const result = (await response.json().catch(() => null)) as
         | { ok?: boolean; error?: { message?: string } }

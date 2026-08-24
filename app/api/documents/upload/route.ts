@@ -143,7 +143,7 @@ export async function POST(request: Request) {
         data: {
           vehicleId: vehicle.id,
           type: "DOCUMENT",
-          occurredAt: createdDocument.occurredAt ?? new Date(),
+          occurredAt,
           documentId: createdDocument.id,
         },
       });
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
             vehicleId: vehicle.id,
             reading: odometer,
             source: "manual-entry",
-            occurredAt: createdDocument.occurredAt ?? new Date(),
+            occurredAt,
           },
         });
 

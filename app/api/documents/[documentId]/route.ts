@@ -1,19 +1,8 @@
-import { basename, extname } from "node:path";
 import { readFile } from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-
-function buildFilename(title: string, filePath: string) {
-  const extension = extname(filePath);
-  const normalizedTitle = title.trim().replace(/[<>:"/\\|?*\x00-\x1f]+/g, "-");
-
-  if (!normalizedTitle) {
-    return basename(filePath);
-  }
-
-  return normalizedTitle.endsWith(extension) ? normalizedTitle : `${normalizedTitle}${extension}`;
-}
+import { buildDocumentDownloadFilename, isStoredDocumentPath } from "@/lib/documents";
 
 export async function GET(
   request: NextRequest,
@@ -40,9 +29,13 @@ export async function GET(
   }
 
   try {
+    if (!isStoredDocumentPath(document.filePath)) {
+      return new Response("File not found", { status: 404 });
+    }
+
     const file = await readFile(document.filePath);
     const download = request.nextUrl.searchParams.get("download") === "1";
-    const filename = buildFilename(document.title, document.filePath);
+    const filename = buildDocumentDownloadFilename(document.title, document.contentType);
 
     return new Response(file, {
       status: 200,

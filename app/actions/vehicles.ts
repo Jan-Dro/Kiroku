@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { calculateFuelEconomy } from "@/lib/domain/fuel";
 import { shouldPromoteCurrentMileage } from "@/lib/domain/odometer";
 import { parseCurrencyToCents } from "@/lib/domain/money";
-import { persistVehicleDocument, removeStoredDocument } from "@/lib/documents";
+import { removeStoredDocument } from "@/lib/documents";
 import { ensureAllowedVehicleImage, persistVehicleImage, removeStoredVehicleImage } from "@/lib/vehicle-images";
 import { vehicleSchema } from "@/lib/validators/vehicle";
 
@@ -409,69 +409,6 @@ export async function createExpenseAction(
     return { ok: true, error: "" };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "Unable to add expense." };
-  }
-}
-
-export async function createVehicleDocumentAction(
-  _previousState: VehicleDocumentActionState,
-  formData: FormData,
-): Promise<VehicleDocumentActionState> {
-  try {
-    const user = await requireUser();
-    const vehicleId = formData.get("vehicleId")?.toString() ?? "";
-    const vehicle = await assertVehicleOwnership(user.id, vehicleId);
-
-    const file = formData.get("file");
-    const title = formData.get("title")?.toString().trim() ?? "";
-    const categoryValue = formData.get("category")?.toString() ?? "OTHER";
-    const occurredAtRaw = formData.get("occurredAt")?.toString() ?? "";
-    const notes = optionalString(formData.get("notes"));
-    const odometerRaw = formData.get("odometer")?.toString();
-
-    if (!(file instanceof File) || file.size === 0) {
-      return { ok: false, error: "Choose a file to upload." };
-    }
-
-    if (!title || !occurredAtRaw) {
-      return { ok: false, error: "Fill out the title and date." };
-    }
-
-    const category = DocumentCategory[categoryValue as keyof typeof DocumentCategory] ?? DocumentCategory.OTHER;
-    const stored = await persistVehicleDocument(vehicleId, file);
-
-    const document = await db.document.create({
-      data: {
-        vehicleId,
-        title,
-        category,
-        filePath: stored.diskPath,
-        contentType: file.type,
-        fileSizeBytes: file.size,
-        occurredAt: new Date(occurredAtRaw),
-        odometer: odometerRaw ? Number(odometerRaw) : null,
-        notes,
-      },
-    });
-
-    await db.timelineEvent.create({
-      data: {
-        vehicleId,
-        type: "DOCUMENT",
-        occurredAt: document.occurredAt ?? new Date(),
-        documentId: document.id,
-      },
-    });
-
-    if (odometerRaw) {
-      await updateVehicleMileageIfNeeded(vehicle.id, Number(odometerRaw));
-    }
-
-    revalidatePath(`/vehicles/${vehicleId}/documents`);
-    revalidatePath(`/vehicles/${vehicleId}`);
-    revalidatePath("/dashboard");
-    return { ok: true, error: "" };
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Unable to upload document." };
   }
 }
 

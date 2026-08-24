@@ -7,7 +7,7 @@ const serverActionBodySizeLimitBytes = Math.round(serverActionBodySizeLimitMb * 
 
 const nextConfig: NextConfig = {
   serverActions: {
-    bodySizeLimit: `${serverActionBodySizeLimitBytes}`,
+    bodySizeLimit: serverActionBodySizeLimitBytes,
   },
   images: {
     remotePatterns: [],

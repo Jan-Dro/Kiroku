@@ -2,7 +2,7 @@ import { FuelInsightsPanel } from "@/components/fuel-insights-panel";
 import { DeleteFuelEntryButton } from "@/components/delete-fuel-entry-button";
 import { requireUser } from "@/lib/auth";
 import { getVehicleById } from "@/lib/data/vehicles";
-import { averageMpg, averageFuelPrice, bestMpg, costPerMile, totalFuelCost, totalGallons } from "@/lib/vehicle-insights";
+import { totalFuelCost } from "@/lib/vehicle-insights";
 import { formatCurrencyFromCents, formatDate, formatNumber } from "@/lib/utils";
 import { notFound } from "next/navigation";
 
@@ -41,29 +41,6 @@ export default async function VehicleFuelPage({
             station: entry.station,
           }))}
         />
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted-foreground)]">Average MPG</p>
-          <p className="mt-2 text-2xl font-semibold">{averageMpg(vehicle.fuelEntries) ? formatNumber(averageMpg(vehicle.fuelEntries) ?? 0) : "—"}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted-foreground)]">Best MPG</p>
-          <p className="mt-2 text-2xl font-semibold">{bestMpg(vehicle.fuelEntries) ? formatNumber(bestMpg(vehicle.fuelEntries) ?? 0) : "—"}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted-foreground)]">Average price</p>
-          <p className="mt-2 text-2xl font-semibold">{averageFuelPrice(vehicle.fuelEntries) ? `$${formatNumber(averageFuelPrice(vehicle.fuelEntries) ?? 0, 2)}` : "—"}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted-foreground)]">Total gallons</p>
-          <p className="mt-2 text-2xl font-semibold">{formatNumber(totalGallons(vehicle.fuelEntries), 1)}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-[var(--muted-foreground)]">Cost per mile</p>
-          <p className="mt-2 text-2xl font-semibold">{costPerMile(vehicle.fuelEntries) ? `$${formatNumber(costPerMile(vehicle.fuelEntries) ?? 0, 2)}` : "—"}</p>
-        </div>
       </section>
 
       <section className="space-y-4">

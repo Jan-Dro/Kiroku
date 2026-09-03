@@ -475,6 +475,40 @@ export async function deleteVehicleDocumentAction(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function deleteFuelEntryAction(formData: FormData) {
+  const user = await requireUser();
+  const fuelEntryId = formData.get("fuelEntryId")?.toString() ?? "";
+
+  const fuelEntry = await db.fuelEntry.findFirst({
+    where: {
+      id: fuelEntryId,
+      vehicle: {
+        userId: user.id,
+      },
+    },
+    select: {
+      id: true,
+      vehicleId: true,
+    },
+  });
+
+  if (!fuelEntry) {
+    return;
+  }
+
+  await db.timelineEvent.deleteMany({
+    where: { fuelEntryId: fuelEntry.id },
+  });
+
+  await db.fuelEntry.delete({
+    where: { id: fuelEntry.id },
+  });
+
+  revalidatePath(`/vehicles/${fuelEntry.vehicleId}/fuel`);
+  revalidatePath(`/vehicles/${fuelEntry.vehicleId}`);
+  revalidatePath("/dashboard");
+}
+
 export async function createVehicleNoteAction(
   _previousState: VehicleRecordActionState,
   formData: FormData,

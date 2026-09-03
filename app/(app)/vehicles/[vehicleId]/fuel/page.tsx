@@ -1,4 +1,5 @@
 import { FuelInsightsPanel } from "@/components/fuel-insights-panel";
+import { DeleteFuelEntryButton } from "@/components/delete-fuel-entry-button";
 import { requireUser } from "@/lib/auth";
 import { getVehicleById } from "@/lib/data/vehicles";
 import { averageMpg, averageFuelPrice, bestMpg, costPerMile, totalFuelCost, totalGallons } from "@/lib/vehicle-insights";
@@ -85,6 +86,9 @@ export default async function VehicleFuelPage({
                   <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                     {entry.calculatedEconomy ? `${formatNumber(Number(entry.calculatedEconomy.toString()))} MPG` : "Partial fill"}
                   </p>
+                  <div className="mt-2 flex justify-end">
+                    <DeleteFuelEntryButton fuelEntryId={entry.id} />
+                  </div>
                 </div>
               </div>
             ))

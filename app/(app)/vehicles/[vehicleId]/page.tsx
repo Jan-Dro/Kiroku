@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { getVehicleById } from "@/lib/data/vehicles";
 import {
   averageMpg,
+  bestTripMiles,
   getFuelSpendThisMonth,
   getReminderSummary,
   getServiceSpendThisYear,
@@ -32,6 +33,7 @@ export default async function VehicleOverviewPage({
   const yearStart = new Date(now.getFullYear(), 0, 1);
   const mpgAverage = averageMpg(vehicle.fuelEntries);
   const recentFuelMpg = recentMpg(vehicle.fuelEntries);
+  const bestTrip = bestTripMiles(vehicle.fuelEntries);
   const fuelSpendThisMonth = getFuelSpendThisMonth(vehicle.fuelEntries, monthStart);
   const serviceSpendThisYear = getServiceSpendThisYear(vehicle.maintenanceRecords, yearStart);
   const costs = ownershipCosts(vehicle.fuelEntries, vehicle.maintenanceRecords, vehicle.expenses);
@@ -186,6 +188,12 @@ export default async function VehicleOverviewPage({
                 <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Purchase mileage</p>
                 <p className="mt-2 text-2xl font-semibold">
                   {vehicle.purchaseMileage !== null ? `${formatNumber(vehicle.purchaseMileage, 0)} mi` : "—"}
+                </p>
+              </div>
+              <div className="border-l border-[var(--border)] pl-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">All-time best trip</p>
+                <p className="mt-2 text-2xl font-semibold">
+                  {bestTrip !== null ? `${formatNumber(bestTrip, 0)} mi` : "—"}
                 </p>
               </div>
             </div>

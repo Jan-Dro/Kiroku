@@ -50,12 +50,20 @@ export default async function VehicleFuelPage({
         </div>
         <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
           {vehicle.fuelEntries.length > 0 ? (
-            vehicle.fuelEntries.map((entry) => (
-              <div className="flex items-center justify-between gap-4 py-4" key={entry.id}>
-                <div>
+            vehicle.fuelEntries.map((entry, index) => {
+              const previousEntry = vehicle.fuelEntries[index + 1];
+              const tripMiles = previousEntry ? entry.odometer - previousEntry.odometer : null;
+              const hasTripMiles = tripMiles !== null && tripMiles > 0;
+
+              return (
+                <div className="flex items-center justify-between gap-4 py-4" key={entry.id}>
+                  <div>
                   <p className="font-medium">{entry.station ?? "Fuel entry"}</p>
                   <p className="mt-1 text-sm text-[var(--muted-foreground)]">
                     {formatDate(entry.occurredAt)} · {formatNumber(entry.odometer, 0)} mi · {entry.volume.toString()} gal
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--muted-foreground)]">
+                    {hasTripMiles ? `${formatNumber(tripMiles, 0)} mi since last fill-up` : "No prior fill-up to calculate trip"}
                   </p>
                 </div>
                 <div className="text-right">
@@ -68,7 +76,8 @@ export default async function VehicleFuelPage({
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           ) : (
             <div className="py-4 text-sm text-[var(--muted-foreground)]">No fuel entries yet.</div>
           )}

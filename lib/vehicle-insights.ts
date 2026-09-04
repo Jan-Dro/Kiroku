@@ -180,3 +180,28 @@ export function filterFuelEntriesByMonths(entries: FuelEntryLike[], months: numb
 
   return entries.filter((entry) => entry.occurredAt >= start);
 }
+
+export function bestTripMiles(entries: FuelEntryLike[]) {
+  if (entries.length < 2) {
+    return null;
+  }
+
+  const ascendingByDate = [...entries].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
+  let best: number | null = null;
+
+  for (let index = 1; index < ascendingByDate.length; index += 1) {
+    const current = ascendingByDate[index];
+    const previous = ascendingByDate[index - 1];
+    const delta = current.odometer - previous.odometer;
+
+    if (delta <= 0) {
+      continue;
+    }
+
+    if (best === null || delta > best) {
+      best = delta;
+    }
+  }
+
+  return best;
+}

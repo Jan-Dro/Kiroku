@@ -88,6 +88,71 @@ async function updateVehicleMileageIfNeeded(vehicleId: string, nextMileage: numb
   }
 }
 
+async function recalculateVehicleCurrentMileage(vehicleId: string) {
+  const [vehicle, latestFuel, latestMaintenance, latestExpense, latestNote, latestDocument] = await Promise.all([
+    db.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { purchaseMileage: true },
+    }),
+    db.fuelEntry.findFirst({
+      where: { vehicleId },
+      orderBy: { odometer: "desc" },
+      select: { odometer: true },
+    }),
+    db.maintenanceRecord.findFirst({
+      where: { vehicleId },
+      orderBy: { odometer: "desc" },
+      select: { odometer: true },
+    }),
+    db.expense.findFirst({
+      where: {
+        vehicleId,
+        odometer: {
+          not: null,
+        },
+      },
+      orderBy: { odometer: "desc" },
+      select: { odometer: true },
+    }),
+    db.vehicleNote.findFirst({
+      where: {
+        vehicleId,
+        odometer: {
+          not: null,
+        },
+      },
+      orderBy: { odometer: "desc" },
+      select: { odometer: true },
+    }),
+    db.document.findFirst({
+      where: {
+        vehicleId,
+        odometer: {
+          not: null,
+        },
+      },
+      orderBy: { odometer: "desc" },
+      select: { odometer: true },
+    }),
+  ]);
+
+  const mileageCandidates = [
+    vehicle?.purchaseMileage ?? null,
+    latestFuel?.odometer ?? null,
+    latestMaintenance?.odometer ?? null,
+    latestExpense?.odometer ?? null,
+    latestNote?.odometer ?? null,
+    latestDocument?.odometer ?? null,
+  ].filter((value): value is number => value !== null);
+
+  await db.vehicle.update({
+    where: { id: vehicleId },
+    data: {
+      currentMileage: mileageCandidates.length > 0 ? Math.max(...mileageCandidates) : null,
+    },
+  });
+}
+
 export async function createVehicleAction(
   _previousState: VehicleActionState,
   formData: FormData,
@@ -503,6 +568,8 @@ export async function deleteFuelEntryAction(formData: FormData) {
   await db.fuelEntry.delete({
     where: { id: fuelEntry.id },
   });
+
+  await recalculateVehicleCurrentMileage(fuelEntry.vehicleId);
 
   revalidatePath(`/vehicles/${fuelEntry.vehicleId}/fuel`);
   revalidatePath(`/vehicles/${fuelEntry.vehicleId}`);

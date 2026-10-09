@@ -2,10 +2,12 @@
 
 import { Trash2 } from "lucide-react";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { deleteFuelEntryAction } from "@/app/actions/vehicles";
 import { Button } from "@/components/ui/button";
 
 export function DeleteFuelEntryButton({ fuelEntryId }: { fuelEntryId: string }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   return (
@@ -20,6 +22,7 @@ export function DeleteFuelEntryButton({ fuelEntryId }: { fuelEntryId: string }) 
           const formData = new FormData();
           formData.set("fuelEntryId", fuelEntryId);
           await deleteFuelEntryAction(formData);
+          router.refresh();
         });
       }}
       size="sm"

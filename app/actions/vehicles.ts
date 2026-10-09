@@ -31,6 +31,11 @@ type VehicleImageActionState = {
   error: string;
 };
 
+type VehicleSettingsActionState = {
+  ok: boolean;
+  error: string;
+};
+
 function optionalNumber(value: FormDataEntryValue | null) {
   if (value === null || value === "") {
     return undefined;
@@ -286,6 +291,123 @@ export async function createVehicleAction(
   revalidatePath("/vehicles");
 
   return { ok: true, error: "", vehicleId: vehicle.id };
+}
+
+export async function updateVehicleSettingsAction(
+  _previousState: VehicleSettingsActionState,
+  formData: FormData,
+): Promise<VehicleSettingsActionState> {
+  try {
+    const user = await requireUser();
+    const vehicleId = formData.get("vehicleId")?.toString() ?? "";
+    const vehicle = await assertVehicleOwnership(user.id, vehicleId);
+
+    const parsed = vehicleSchema.safeParse({
+      nickname: formData.get("nickname"),
+      year: formData.get("year"),
+      make: formData.get("make"),
+      model: formData.get("model"),
+      trim: formData.get("trim")?.toString() ?? "",
+      vin: formData.get("vin")?.toString() ?? "",
+      licensePlate: formData.get("licensePlate")?.toString() ?? "",
+      purchaseDate: formData.get("purchaseDate")?.toString() ?? "",
+      purchaseMileage: optionalNumber(formData.get("purchaseMileage")),
+      currentMileage: optionalNumber(formData.get("currentMileage")),
+      purchasePrice: formData.get("purchasePrice")?.toString() ?? "",
+      engine: formData.get("engine")?.toString() ?? "",
+      drivetrain: formData.get("drivetrain")?.toString() ?? "",
+      transmission: formData.get("transmission")?.toString() ?? "",
+      fuelType:
+        formData.get("fuelType") && formData.get("fuelType") !== ""
+          ? (formData.get("fuelType") as FuelType)
+          : null,
+      exteriorColor: formData.get("exteriorColor")?.toString() ?? "",
+      notes: formData.get("notes")?.toString() ?? "",
+    });
+
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid vehicle data.",
+      };
+    }
+
+    const purchasePriceCents =
+      parsed.data.purchasePrice && parsed.data.purchasePrice.length > 0
+        ? parseCurrencyToCents(parsed.data.purchasePrice)
+        : null;
+
+    try {
+      await db.vehicle.update({
+        where: { id: vehicle.id },
+        data: {
+          nickname: parsed.data.nickname,
+          year: parsed.data.year,
+          make: parsed.data.make,
+          model: parsed.data.model,
+          trim: parsed.data.trim || null,
+          vin: parsed.data.vin || null,
+          licensePlate: parsed.data.licensePlate || null,
+          purchaseDate: parsed.data.purchaseDate ? new Date(parsed.data.purchaseDate) : null,
+          purchaseMileage: parsed.data.purchaseMileage ?? null,
+          currentMileage: parsed.data.currentMileage ?? null,
+          purchasePriceCents,
+          engine: parsed.data.engine || null,
+          drivetrain: parsed.data.drivetrain || null,
+          transmission: parsed.data.transmission || null,
+          fuelType: parsed.data.fuelType || null,
+          exteriorColor: parsed.data.exteriorColor || null,
+          notes: parsed.data.notes || null,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        return {
+          ok: false,
+          error: "A vehicle with that VIN already exists in your garage.",
+        };
+      }
+
+      throw error;
+    }
+
+    if (parsed.data.currentMileage !== undefined) {
+      await db.odometerReading.create({
+        data: {
+          vehicleId: vehicle.id,
+          occurredAt: new Date(),
+          reading: parsed.data.currentMileage,
+          source: "manual-entry",
+        },
+      });
+    }
+
+    revalidatePath(`/vehicles/${vehicle.id}/settings`);
+    revalidatePath(`/vehicles/${vehicle.id}`);
+    revalidatePath("/dashboard");
+    return { ok: true, error: "" };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unable to update vehicle settings." };
+  }
+}
+
+export async function recalculateVehicleMileageAction(formData: FormData): Promise<VehicleRecordActionState> {
+  try {
+    const user = await requireUser();
+    const vehicleId = formData.get("vehicleId")?.toString() ?? "";
+    await assertVehicleOwnership(user.id, vehicleId);
+
+    await recalculateVehicleCurrentMileage(vehicleId);
+
+    revalidatePath(`/vehicles/${vehicleId}/settings`);
+    revalidatePath(`/vehicles/${vehicleId}`);
+    revalidatePath(`/vehicles/${vehicleId}/fuel`);
+    revalidatePath("/dashboard");
+
+    return { ok: true, error: "" };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Unable to recalculate mileage." };
+  }
 }
 
 export async function updateVehicleImageAction(

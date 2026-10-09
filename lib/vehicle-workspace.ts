@@ -2,7 +2,8 @@ export type VehicleWorkspaceRecordType = "fuel" | "maintenance" | "expense" | "u
 
 export type VehicleWorkspaceAction =
   | { type: "record"; label: string; recordType?: VehicleWorkspaceRecordType }
-  | { type: "document"; label: string };
+  | { type: "document"; label: string }
+  | { type: "none" };
 
 export type VehicleWorkspaceSection =
   | "overview"
@@ -11,7 +12,8 @@ export type VehicleWorkspaceSection =
   | "expenses"
   | "upgrades"
   | "notes"
-  | "documents";
+  | "documents"
+  | "settings";
 
 export function getVehicleWorkspaceSection(pathname: string, vehicleId: string): VehicleWorkspaceSection {
   const basePath = `/vehicles/${vehicleId}`;
@@ -40,6 +42,10 @@ export function getVehicleWorkspaceSection(pathname: string, vehicleId: string):
     return "documents";
   }
 
+  if (pathname === `${basePath}/settings`) {
+    return "settings";
+  }
+
   return "overview";
 }
 
@@ -57,6 +63,8 @@ export function getVehicleWorkspaceAction(section: VehicleWorkspaceSection): Veh
       return { type: "record", label: "Add note", recordType: "note" };
     case "documents":
       return { type: "document", label: "Upload document" };
+    case "settings":
+      return { type: "none" };
     default:
       return { type: "record", label: "Add record" };
   }

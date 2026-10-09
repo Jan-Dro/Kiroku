@@ -10,6 +10,7 @@ const navItems = [
   { label: "Upgrades", href: "/upgrades", section: "upgrades" },
   { label: "Notes", href: "/notes", section: "notes" },
   { label: "Documents", href: "/documents", section: "documents" },
+  { label: "Settings", href: "/settings", section: "settings" },
 ];
 
 export function VehicleWorkspaceNav({

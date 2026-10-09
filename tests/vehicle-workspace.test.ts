@@ -15,6 +15,7 @@ describe("vehicle workspace routing", () => {
     expect(getVehicleWorkspaceSection(`/vehicles/${vehicleId}/upgrades`, vehicleId)).toBe("upgrades");
     expect(getVehicleWorkspaceSection(`/vehicles/${vehicleId}/notes`, vehicleId)).toBe("notes");
     expect(getVehicleWorkspaceSection(`/vehicles/${vehicleId}/documents`, vehicleId)).toBe("documents");
+    expect(getVehicleWorkspaceSection(`/vehicles/${vehicleId}/settings`, vehicleId)).toBe("settings");
   });
 
   it("derives the expected contextual action for each section", () => {
@@ -47,6 +48,9 @@ describe("vehicle workspace routing", () => {
     expect(getVehicleWorkspaceAction("documents")).toEqual({
       type: "document",
       label: "Upload document",
+    });
+    expect(getVehicleWorkspaceAction("settings")).toEqual({
+      type: "none",
     });
   });
 });

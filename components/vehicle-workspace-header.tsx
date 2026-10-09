@@ -52,14 +52,14 @@ export function VehicleWorkspaceHeader({
             vehicleId={vehicle.id}
             latestMileage={vehicle.currentMileage}
           />
-        ) : (
+        ) : action.type === "record" ? (
           <VehicleAddRecordDialog
             initialRecordType={action.recordType}
             latestMileage={vehicle.currentMileage}
             triggerLabel={action.label}
             vehicleId={vehicle.id}
           />
-        )}
+        ) : null}
       </div>
     </section>
   );

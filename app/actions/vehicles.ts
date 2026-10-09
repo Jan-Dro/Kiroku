@@ -92,17 +92,17 @@ async function recalculateVehicleCurrentMileage(vehicleId: string) {
   const [vehicle, latestFuel, latestMaintenance, latestExpense, latestNote, latestDocument] = await Promise.all([
     db.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { purchaseMileage: true },
+      select: { purchaseMileage: true, purchaseDate: true, createdAt: true },
     }),
     db.fuelEntry.findFirst({
       where: { vehicleId },
-      orderBy: { odometer: "desc" },
-      select: { odometer: true },
+      orderBy: { occurredAt: "desc" },
+      select: { odometer: true, occurredAt: true },
     }),
     db.maintenanceRecord.findFirst({
       where: { vehicleId },
-      orderBy: { odometer: "desc" },
-      select: { odometer: true },
+      orderBy: { occurredAt: "desc" },
+      select: { odometer: true, occurredAt: true },
     }),
     db.expense.findFirst({
       where: {
@@ -111,8 +111,8 @@ async function recalculateVehicleCurrentMileage(vehicleId: string) {
           not: null,
         },
       },
-      orderBy: { odometer: "desc" },
-      select: { odometer: true },
+      orderBy: { occurredAt: "desc" },
+      select: { odometer: true, occurredAt: true },
     }),
     db.vehicleNote.findFirst({
       where: {
@@ -121,8 +121,8 @@ async function recalculateVehicleCurrentMileage(vehicleId: string) {
           not: null,
         },
       },
-      orderBy: { odometer: "desc" },
-      select: { odometer: true },
+      orderBy: { occurredAt: "desc" },
+      select: { odometer: true, occurredAt: true },
     }),
     db.document.findFirst({
       where: {
@@ -131,24 +131,61 @@ async function recalculateVehicleCurrentMileage(vehicleId: string) {
           not: null,
         },
       },
-      orderBy: { odometer: "desc" },
-      select: { odometer: true },
+      orderBy: { occurredAt: "desc" },
+      select: { odometer: true, occurredAt: true },
     }),
   ]);
 
   const mileageCandidates = [
-    vehicle?.purchaseMileage ?? null,
-    latestFuel?.odometer ?? null,
-    latestMaintenance?.odometer ?? null,
-    latestExpense?.odometer ?? null,
-    latestNote?.odometer ?? null,
-    latestDocument?.odometer ?? null,
-  ].filter((value): value is number => value !== null);
+    vehicle?.purchaseMileage !== null && vehicle?.purchaseMileage !== undefined
+      ? {
+          mileage: vehicle.purchaseMileage,
+          occurredAt: vehicle.purchaseDate ?? vehicle.createdAt,
+        }
+      : null,
+    latestFuel
+      ? {
+          mileage: latestFuel.odometer,
+          occurredAt: latestFuel.occurredAt,
+        }
+      : null,
+    latestMaintenance
+      ? {
+          mileage: latestMaintenance.odometer,
+          occurredAt: latestMaintenance.occurredAt,
+        }
+      : null,
+    latestExpense && latestExpense.odometer !== null
+      ? {
+          mileage: latestExpense.odometer,
+          occurredAt: latestExpense.occurredAt,
+        }
+      : null,
+    latestNote && latestNote.odometer !== null
+      ? {
+          mileage: latestNote.odometer,
+          occurredAt: latestNote.occurredAt,
+        }
+      : null,
+    latestDocument && latestDocument.odometer !== null
+      ? {
+          mileage: latestDocument.odometer,
+          occurredAt: latestDocument.occurredAt,
+        }
+      : null,
+  ].filter((value): value is { mileage: number; occurredAt: Date } => value !== null);
+
+  const latestMileage =
+    mileageCandidates.length > 0
+      ? mileageCandidates.reduce((latest, candidate) =>
+          candidate.occurredAt.getTime() > latest.occurredAt.getTime() ? candidate : latest,
+        ).mileage
+      : null;
 
   await db.vehicle.update({
     where: { id: vehicleId },
     data: {
-      currentMileage: mileageCandidates.length > 0 ? Math.max(...mileageCandidates) : null,
+      currentMileage: latestMileage,
     },
   });
 }
@@ -554,6 +591,7 @@ export async function deleteFuelEntryAction(formData: FormData) {
     select: {
       id: true,
       vehicleId: true,
+      odometer: true,
     },
   });
 
@@ -567,6 +605,14 @@ export async function deleteFuelEntryAction(formData: FormData) {
 
   await db.fuelEntry.delete({
     where: { id: fuelEntry.id },
+  });
+
+  await db.odometerReading.deleteMany({
+    where: {
+      vehicleId: fuelEntry.vehicleId,
+      reading: fuelEntry.odometer,
+      source: "manual-entry",
+    },
   });
 
   await recalculateVehicleCurrentMileage(fuelEntry.vehicleId);
